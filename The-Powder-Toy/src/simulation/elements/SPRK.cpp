@@ -1,4 +1,5 @@
 #include "simulation/Elements.h"
+#include <iostream>
 //#TPT-Directive ElementClass Element_SPRK PT_SPRK 15
 Element_SPRK::Element_SPRK()
 {
@@ -66,6 +67,7 @@ int Element_SPRK::update(UPDATE_FUNC_ARGS)
 			parts[i].life = 54;
 		else if (ct == PT_SWCH)
 			parts[i].life = 14;
+
 		sim->part_change_type(i,x,y,ct);
 		return 0;
 	}
@@ -205,7 +207,7 @@ int Element_SPRK::update(UPDATE_FUNC_ARGS)
 								parts[r>>8].life = 9;
 							}
 						}
-						else if(parts[r>>8].ctype==PT_NTCT||parts[r>>8].ctype==PT_PTCT)		
+						else if(parts[r>>8].ctype==PT_NTCT||parts[r>>8].ctype==PT_PTCT)
 							if (sender==PT_METL)
 							{
 								parts[r>>8].temp = 473.0f;
@@ -256,7 +258,7 @@ int Element_SPRK::update(UPDATE_FUNC_ARGS)
 				if (pavg == PT_INSL) continue; //Insulation blocks everything past here
 				if (!((sim->elements[receiver].Properties&PROP_CONDUCTS)||receiver==PT_INST||receiver==PT_QRTZ)) continue; //Stop non-conducting receivers, allow INST and QRTZ as special cases
 				if (abs(rx)+abs(ry)>=4 &&sender!=PT_SWCH&&receiver!=PT_SWCH) continue; //Only switch conducts really far
-				if (receiver==sender && receiver!=PT_INST && receiver!=PT_QRTZ) goto conduct; //Everything conducts to itself, except INST.
+				if (receiver==sender && receiver!=PT_INST && receiver!=PT_SCON && receiver!=PT_QRTZ) goto conduct; //Everything conducts to itself, except INST.
 
 				//Sender cases, where elements can have specific outputs
 				switch (sender)
@@ -277,6 +279,11 @@ int Element_SPRK::update(UPDATE_FUNC_ARGS)
 					if (receiver==PT_PSCN || (receiver==PT_NSCN && parts[i].temp>373.0f))
 						goto conduct;
 					continue;
+				case PT_SCON:
+					if (receiver==PT_PSCN ||  (receiver==PT_SCON &&  abs(parts[i].temp - parts[r>>8].temp) <= 10)){
+						goto conduct;
+					}
+					continue;
 				case PT_PTCT:
 					if (receiver==PT_PSCN || (receiver==PT_NSCN && parts[i].temp<373.0f))
 						goto conduct;
@@ -294,6 +301,11 @@ int Element_SPRK::update(UPDATE_FUNC_ARGS)
 				case PT_QRTZ:
 					if ((sender==PT_NSCN||sender==PT_METL||sender==PT_PSCN||sender==PT_QRTZ) && (parts[r>>8].temp<173.15||sim->pv[(y+ry)/CELL][(x+rx)/CELL]>8))
 						goto conduct;
+					continue;
+				case PT_SCON:
+					if (sender==PT_PSCN || (sender==PT_SCON && abs(parts[i].temp - parts[r>>8].temp) <= 10)){
+							goto conduct;
+					}
 					continue;
 				case PT_NTCT:
 					if (sender==PT_NSCN || (sender==PT_PSCN&&parts[r>>8].temp>373.0f))
